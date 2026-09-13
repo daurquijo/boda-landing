@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(open /Users/davidurquijo/boda-landing/index.html)"
+    ]
+  }
+}
