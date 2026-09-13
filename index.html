@@ -334,6 +334,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="config.js"></script>
 <script type="module">
 /* ==========================================================================
    CONFIGURACIÓN
@@ -387,13 +388,16 @@ const FAMILIAS = [
    GUARDAR RESULTADOS — Supabase
    1) En Supabase → SQL Editor, corre el contenido de supabase.sql.
    2) Project Settings → API: copia el Project URL y la anon public key.
-   3) Pégalas abajo y pon DEMO_MODE = false.
+   3) Copia config.example.js como config.js y pega ahí tus llaves
+      (config.js no se sube a git — ver README.md).
       (La anon key es pública por diseño; la seguridad la da RLS:
        desde la web SOLO se puede INSERTAR, nunca leer la lista.)
    ========================================================================== */
-const DEMO_MODE         = true;   // pon false cuando pegues las llaves
-const SUPABASE_URL      = "";     // https://XXXXXXXX.supabase.co
-const SUPABASE_ANON_KEY = "";     // anon public key
+const {
+  DEMO_MODE = true,
+  SUPABASE_URL = "",
+  SUPABASE_ANON_KEY = "",
+} = window.SUPABASE_CONFIG || {};
 
 /* ==========================================================================
    Poblar el selector de familias
