@@ -109,6 +109,11 @@
   .submit:hover{background:var(--olive)}
   .submit:disabled{opacity:.45;cursor:not-allowed}
   .link-btn{display:block;width:100%;margin-top:.9rem;background:none;border:none;color:var(--ink-soft);font-size:.9rem;text-decoration:underline;cursor:pointer}
+  .rsvp-deadline{text-align:center;margin:0 0 1.6rem;padding:1rem;border:1px solid rgba(102,112,63,.25);border-radius:10px;background:var(--sand-soft)}
+  .rd-days{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:1.15rem;color:var(--olive-deep)}
+  .rd-days span{font-size:2rem;line-height:1}
+  .rd-date{font-size:.76rem;color:var(--ink-soft);margin-top:.35rem}
+  .rsvp-closed{text-align:center;margin:0 0 1.6rem;padding:1.2rem;border:1px solid rgba(102,112,63,.25);border-radius:10px;background:var(--sand-soft);color:var(--ink-soft);font-size:.95rem}
   .val-note{font-size:.78rem;color:var(--ink-soft);margin-top:1.4rem;line-height:1.5;text-align:center}
   .hint{font-size:.78rem;color:var(--ink-soft);margin-top:.8rem;text-align:center}
 
@@ -279,6 +284,15 @@
       <div class="saludo serif" id="saludo">Confirma tu asistencia</div>
       <p class="sub" id="sub">Encuentra tu familia en la lista. Al confirmar te mostramos el lugar y generamos tu pase de ingreso.</p>
 
+      <div class="rsvp-deadline" id="rsvpDeadline">
+        <div class="rd-days"><span id="rdDays">—</span> días para confirmar</div>
+        <div class="rd-date">Fecha límite: 18 de octubre de 2026</div>
+      </div>
+
+      <div class="rsvp-closed" id="rsvpClosed" style="display:none">
+        <p>El plazo para confirmar asistencia (18 de octubre de 2026) ya cerró.</p>
+      </div>
+
       <div class="card-form" id="formCard">
         <label for="familia">Selecciona tu familia</label>
         <select id="familia">
@@ -345,6 +359,7 @@
 const CONFIG = {
   fechaBoda: "2026-11-08T15:00:00-05:00", // 8 nov 2026, 3:00 p.m. (si es 2027, cambia el año)
   nombres: "Esteban & Tatiana",
+  fechaLimiteRSVP: "2026-10-18T23:59:59-05:00", // plazo para confirmar asistencia
 };
 
 const UBICACION = {
@@ -415,6 +430,29 @@ const sortKey = s => s.replace(/^Familia\s+/i,"");
   o.value = f.id; o.textContent = f.nombre;
   selFamilia.appendChild(o);
 });
+
+/* ==========================================================================
+   PLAZO DE CONFIRMACIÓN — cuenta regresiva en días; pasada la fecha
+   límite se oculta el formulario y se muestra el mensaje de cierre.
+   ========================================================================== */
+(function initPlazoRSVP(){
+  const limite = new Date(CONFIG.fechaLimiteRSVP).getTime();
+  const deadlineBox = document.getElementById("rsvpDeadline");
+  const closedBox = document.getElementById("rsvpClosed");
+  const formCardEl = document.getElementById("formCard");
+  function tickPlazo(){
+    const diff = limite - Date.now();
+    if (diff <= 0){
+      deadlineBox.style.display = "none";
+      formCardEl.style.display = "none";
+      closedBox.style.display = "block";
+      return;
+    }
+    document.getElementById("rdDays").textContent = Math.max(1, Math.ceil(diff/86400000));
+  }
+  tickPlazo();
+  setInterval(tickPlazo, 60000);
+})();
 
 /* Link personalizado: ?i=<idFamilia> preselecciona la familia */
 const params = new URLSearchParams(location.search);
