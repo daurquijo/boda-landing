@@ -19,7 +19,10 @@ python3 -m http.server 8000
 ## Configurar Supabase (guardar las confirmaciones)
 
 1. Crea un proyecto gratis en [supabase.com](https://supabase.com).
-2. En **SQL Editor**, corre el contenido de [`supabase.sql`](supabase.sql).
+2. En **SQL Editor**, corre el contenido de `supabase.sql` (no está en el
+   repo — se queda solo local, en `.gitignore` — pídele el contenido a
+   quien lo tenga, o reconstrúyelo con la tabla `confirmaciones`, su RLS
+   de solo-insert, y la función RPC `get_confirmacion`).
 3. En **Project Settings → API**, copia el **Project URL** y la **anon public key**.
 4. Copia la plantilla de configuración y pega tus llaves:
    ```bash
@@ -58,8 +61,8 @@ Dominio: `estebanytatianaboda.info` · repo: `daurquijo/boda-landing`.
    Verifica que la fila aparezca en Table Editor de Supabase.
 2. Confirma que el repo tenga `.nojekyll` en la raíz (ya está) y haz
    commit + push de todo (`index.html`, `.nojekyll`, `CNAME`,
-   `config.example.js`, `supabase.sql`, este README). `config.js` no se
-   sube — queda en `.gitignore`.
+   `config.example.js`, este README). `config.js` y `supabase.sql` no se
+   suben — quedan en `.gitignore`.
 3. En GitHub: **Settings → Pages → Source**: "Deploy from a branch",
    rama `main`, carpeta `/ (root)` → Save. En ~1 minuto tendrás
    `https://daurquijo.github.io/boda-landing/` — pruébala ahí primero.

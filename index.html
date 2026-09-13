@@ -321,6 +321,7 @@
           </div>
           <p class="pase-note">La entrada se valida con este pase. Tenlo a la mano el día del evento.</p>
         </div>
+        <button class="link-btn" id="editarBtn">Cambiar mi respuesta</button>
       </div>
     </div>
   </section>
@@ -442,10 +443,14 @@ function renderMiembros(fam){
 }
 selFamilia.addEventListener("change", ()=>{
   const fam = FAMILIAS.find(f=>f.id===selFamilia.value);
-  if (fam) renderMiembros(fam);
+  if (fam){ renderMiembros(fam); revisarConfirmacionPrevia(fam); }
   else { miembrosWrap.style.display="none"; familiaActual=null; }
 });
-if (selFamilia.value) renderMiembros(FAMILIAS.find(f=>f.id===selFamilia.value));
+if (selFamilia.value){
+  const fam = FAMILIAS.find(f=>f.id===selFamilia.value);
+  renderMiembros(fam);
+  revisarConfirmacionPrevia(fam);
+}
 
 /* ==========================================================================
    Confirmar / Rechazar
@@ -484,6 +489,16 @@ declineBtn.onclick = async ()=>{
   };
   try { await guardarRSVP(payload); } catch(e){ console.error(e); }
   mostrarRechazo(payload);
+};
+
+document.getElementById("editarBtn").onclick = ()=>{
+  const g = document.getElementById("gracias");
+  g.classList.remove("show","ok","no");
+  document.getElementById("pase").style.display = "none";
+  document.getElementById("formCard").style.display = "block";
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Confirmar asistencia";
+  hint.textContent = "";
 };
 
 /* ==========================================================================
@@ -589,19 +604,31 @@ function descargarPase(payload){
 }
 
 /* ==========================================================================
+   Supabase — cliente compartido (lazy, se crea una sola vez)
+   ========================================================================== */
+let supabasePromise = null;
+function getSupabaseClient(){
+  if (DEMO_MODE || !SUPABASE_URL) return null;
+  if (!supabasePromise){
+    supabasePromise = import("https://esm.sh/@supabase/supabase-js@2")
+      .then(({ createClient }) => createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+  }
+  return supabasePromise;
+}
+
+/* ==========================================================================
    GUARDAR RSVP — inserta la confirmación en Supabase (tabla confirmaciones).
    Mientras DEMO_MODE=true o falten las llaves, solo simula el guardado.
    Con Supabase sí podemos detectar errores (a diferencia de Google), así que
    si algo falla, el botón muestra "Reintentar".
    ========================================================================== */
 async function guardarRSVP(payload){
-  if (DEMO_MODE || !SUPABASE_URL){
+  const supabase = await getSupabaseClient();
+  if (!supabase){
     console.log("[DEMO] RSVP:", payload);
     await new Promise(r=>setTimeout(r,600));
     return { ok:true };
   }
-  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const { error } = await supabase.from("confirmaciones").insert({
     familia_id: payload.familia_id,
     familia: payload.familia,
@@ -612,6 +639,42 @@ async function guardarRSVP(payload){
   });
   if (error) throw error;
   return { ok:true };
+}
+
+/* ==========================================================================
+   BUSCAR CONFIRMACIÓN PREVIA — vía RPC get_confirmacion (solo lee la familia
+   pedida, nunca la lista completa; ver supabase.sql). Si falla o no hay
+   Supabase configurado, se ignora en silencio y se muestra el formulario.
+   ========================================================================== */
+async function buscarConfirmacion(familiaId){
+  const supabase = await getSupabaseClient();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.rpc("get_confirmacion", { p_familia_id: familiaId });
+    if (error || !data || !data.length) return null;
+    return data[0];
+  } catch(e){
+    console.error(e);
+    return null;
+  }
+}
+
+async function revisarConfirmacionPrevia(fam){
+  if (!fam) return;
+  hint.textContent = "Verificando si ya confirmaste…";
+  const prev = await buscarConfirmacion(fam.id);
+  if (hint.textContent === "Verificando si ya confirmaste…") hint.textContent = "";
+  if (!prev) return;
+  const payload = {
+    familia_id: fam.id,
+    familia: fam.nombre,
+    estado: prev.estado,
+    asistentes: prev.asistentes || [],
+    num_asistentes: prev.num_asistentes || 0,
+    codigo: prev.codigo || codigoPase(fam.id),
+  };
+  if (payload.estado === "confirmado") mostrarPase(payload);
+  else mostrarRechazo(payload);
 }
 
 /* ==========================================================================
