@@ -604,8 +604,11 @@ function descargarPase(payload){
   x.fillStyle="#66703F"; x.font="italic 30px Georgia, serif"; x.fillText("Esteban & Tatiana",W/2,H-190);
   x.fillStyle="#5C6047"; x.font="400 24px Arial, sans-serif";
   wrapText(x,"Presenta este pase en la entrada. La entrada se valida con tu pase.",W/2,H-140,W-320,34);
-  const a=document.createElement("a"); a.href=c.toDataURL("image/png");
-  a.download="pase-"+payload.familia_id+".png"; a.click();
+  c.toBlob(blob=>{
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="pase-"+payload.familia_id+".png"; a.click();
+    URL.revokeObjectURL(a.href);
+  }, "image/png");
 }
 
 /* ==========================================================================
