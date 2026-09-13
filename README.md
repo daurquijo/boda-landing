@@ -37,26 +37,38 @@ python3 -m http.server 8000
    };
    ```
 
-`config.js` es solo para correr/probar localmente — **no se sube al repo**
-(`.gitignore`). En producción no hace falta subirlo: el deploy usa GitHub
-Actions (`.github/workflows/deploy.yml`), que genera `config.js` en cada
-push a partir de dos **Secrets** del repo:
+`config.js` **sí se sube al repo**, pero con un contenido "placeholder"
+seguro (`DEMO_MODE: true`, llaves vacías — igual que `config.example.js`).
+
+> ⚠️ **`config.js` NO puede estar en `.gitignore`.** GitHub Pages no sirve
+> ningún archivo que aparezca en `.gitignore`, **incluso si el workflow lo
+> genera y lo sube explícitamente al artifact** — así se rompió una vez en
+> producción (ver nota abajo). Por eso el archivo trackeado en git debe ser
+> el placeholder seguro, nunca estar ignorado.
+
+En producción, el deploy usa GitHub Actions
+(`.github/workflows/deploy.yml`), que **sobrescribe** ese `config.js` en
+cada push, justo antes de publicar, con el valor real de dos **Secrets**
+del repo:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
 Configúralos en GitHub: **Settings → Secrets and variables → Actions → New
-repository secret**. Sin ellos, el workflow igual corre pero genera un
-`config.js` "vacío" — y como `DEMO_MODE` es `false` por defecto en el
-código, el sitio falla de forma visible ("No pudimos guardar") en vez de
-fingir que guardó (así falló una vez en producción, con otro mecanismo:
-ver nota abajo).
+repository secret**. Sin ellos, el workflow igual corre pero deja el
+`config.js` publicado con llaves vacías — y como `DEMO_MODE` es `false`
+por defecto en el código (index.html), el sitio falla de forma visible
+("No pudimos guardar") en vez de fingir que guardó.
 
 La anon key es pública por diseño (viaja al navegador de todos modos); la
 seguridad la da Row Level Security (RLS) en `supabase.sql`, no el ocultar
 este valor: desde la web solo se puede **insertar** confirmaciones, nunca
-leer la lista completa. Usar Secrets es solo para no tener el valor en el
-historial de git, no una medida de seguridad adicional.
+leer la lista completa. Generarla vía Secrets es solo para no tener el
+valor real en el historial de git, no una medida de seguridad adicional.
+
+Para probar localmente con Supabase real, edita `config.js` directamente
+con tus llaves (pon `DEMO_MODE: false`) — evita commitear ese cambio, o
+restaura el placeholder después con `cp config.example.js config.js`.
 
 > **Importante:** `DEMO_MODE` por defecto es `false` en el código. Si faltan
 > las llaves y `DEMO_MODE` no está encendido a propósito, el formulario
@@ -85,8 +97,11 @@ Dominio: `estebanytatianaboda.info` · repo: `daurquijo/boda-landing`.
 4. Confirma que el repo tenga `.nojekyll` en la raíz (ya está, aunque con
    deploy por Actions ya no es estrictamente necesario) y haz commit +
    push de todo (`index.html`, `.nojekyll`, `CNAME`, `config.example.js`,
-   `.github/workflows/deploy.yml`, este README). `config.js` y
-   `supabase.sql` no se suben (`.gitignore`).
+   `config.js` con su placeholder seguro, `.github/workflows/deploy.yml`,
+   este README). Solo `supabase.sql` se queda fuera (`.gitignore`) —
+   `config.js` **debe** subirse tal cual (placeholder), nunca ignorarlo:
+   ver la advertencia arriba sobre por qué GitHub Pages no sirve archivos
+   en `.gitignore`.
 5. El push dispara el workflow (pestaña **Actions** del repo) — cuando
    termine en verde, prueba `https://daurquijo.github.io/boda-landing/`
    antes de meter el dominio.
