@@ -392,12 +392,15 @@ const FAMILIAS = [
    1) En Supabase → SQL Editor, corre el contenido de supabase.sql.
    2) Project Settings → API: copia el Project URL y la anon public key.
    3) Copia config.example.js como config.js y pega ahí tus llaves
-      (config.js no se sube a git — ver README.md).
-      (La anon key es pública por diseño; la seguridad la da RLS:
-       desde la web SOLO se puede INSERTAR, nunca leer la lista.)
+      (config.js SÍ se sube a git — ver README.md; la anon key es pública
+       por diseño, la seguridad la da RLS: desde la web SOLO se puede
+       INSERTAR, nunca leer la lista).
+   DEMO_MODE por defecto es false: si falta config.js o las llaves, el
+   guardado debe FALLAR de forma visible (botón "Reintentar"), nunca
+   simular un éxito silencioso.
    ========================================================================== */
 const {
-  DEMO_MODE = true,
+  DEMO_MODE = false,
   SUPABASE_URL = "",
   SUPABASE_ANON_KEY = "",
 } = window.SUPABASE_CONFIG || {};
@@ -488,7 +491,8 @@ declineBtn.onclick = async ()=>{
     estado: "rechazado", asistentes: [], num_asistentes: 0,
     codigo: null, fecha_respuesta: new Date().toISOString(),
   };
-  try { await guardarRSVP(payload); } catch(e){ console.error(e); }
+  try { await guardarRSVP(payload); }
+  catch(e){ console.error(e); hint.textContent = "No pudimos guardar. Revisa tu conexión."; return; }
   mostrarRechazo(payload);
 };
 
@@ -619,17 +623,20 @@ function getSupabaseClient(){
 
 /* ==========================================================================
    GUARDAR RSVP — inserta la confirmación en Supabase (tabla confirmaciones).
-   Mientras DEMO_MODE=true o falten las llaves, solo simula el guardado.
-   Con Supabase sí podemos detectar errores (a diferencia de Google), así que
-   si algo falla, el botón muestra "Reintentar".
+   Solo con DEMO_MODE=true (a propósito) se simula el guardado. Si faltan
+   las llaves y DEMO_MODE no está encendido, esto debe FALLAR (nunca fingir
+   éxito): así el botón muestra "Reintentar" en vez de perder la respuesta
+   en silencio, que es justo el bug que dejó caer las confirmaciones cuando
+   config.js faltaba en producción.
    ========================================================================== */
 async function guardarRSVP(payload){
-  const supabase = await getSupabaseClient();
-  if (!supabase){
+  if (DEMO_MODE){
     console.log("[DEMO] RSVP:", payload);
     await new Promise(r=>setTimeout(r,600));
     return { ok:true };
   }
+  const supabase = await getSupabaseClient();
+  if (!supabase) throw new Error("Falta configurar Supabase (config.js con SUPABASE_URL/ANON_KEY)");
   const { error } = await supabase.from("confirmaciones").insert({
     familia_id: payload.familia_id,
     familia: payload.familia,

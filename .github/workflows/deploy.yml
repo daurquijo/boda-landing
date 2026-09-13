@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # config.js no vive en el repo (ver .gitignore) — se genera aquí a
+      # partir de los Secrets del repo en cada deploy. Si algún día faltan
+      # los Secrets, esto genera un config.js "vacío" (SUPABASE_URL=""), y
+      # el DEMO_MODE=false por defecto en index.html hace que el sitio
+      # falle de forma visible en vez de fingir que guardó.
+      - name: Generar config.js desde Secrets
+        run: |
+          cat > config.js <<EOF
+          window.SUPABASE_CONFIG = {
+            DEMO_MODE: false,
+            SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
+            SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}",
+          };
+          EOF
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - id: deployment
+        uses: actions/deploy-pages@v4
