@@ -487,6 +487,7 @@ submitBtn.onclick = async ()=>{
     num_asistentes: asistentes.length,
     codigo: codigoPase(familiaActual.id),
     fecha_respuesta: new Date().toISOString(),
+    origen: location.href,
   };
   submitBtn.disabled = true; submitBtn.textContent = "Enviando…";
   try { await guardarRSVP(payload); mostrarPase(payload); }
@@ -499,6 +500,7 @@ declineBtn.onclick = async ()=>{
     familia_id: familiaActual.id, familia: familiaActual.nombre,
     estado: "rechazado", asistentes: [], num_asistentes: 0,
     codigo: null, fecha_respuesta: new Date().toISOString(),
+    origen: location.href,
   };
   try { await guardarRSVP(payload); }
   catch(e){ console.error(e); hint.textContent = "No pudimos guardar. Revisa tu conexión."; return; }
@@ -658,6 +660,7 @@ async function guardarRSVP(payload){
     p_asistentes: payload.asistentes,
     p_num_asistentes: payload.num_asistentes,
     p_codigo: payload.codigo,
+    p_origen: payload.origen,
   });
   if (error) throw error;
   return { ok:true };

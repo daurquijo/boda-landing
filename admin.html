@@ -46,6 +46,11 @@
 
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;gap:1rem;flex-wrap:wrap}
   .toolbar button{font-size:.95rem;padding:.55rem 1rem}
+
+  .seccion-title{font-family:"Cormorant Garamond",serif;font-size:1.3rem;color:var(--olive-deep);margin:2rem 0 .8rem}
+  .badge.warn{background:#f6e3c8;color:#8a5a12}
+  .origen{font-size:.78rem;color:var(--ink-soft);word-break:break-all;max-width:220px;display:inline-block}
+  .fila-mismatch{background:#fdf4e7}
 </style>
 </head>
 <body>
@@ -67,8 +72,10 @@
     <div class="stats">
       <div class="stat"><div class="n" id="stConfirmadas">—</div><div class="l">Familias confirmadas</div></div>
       <div class="stat"><div class="n" id="stPersonas">—</div><div class="l">Personas confirmadas</div></div>
-      <div class="stat"><div class="n" id="stRechazadas">—</div><div class="l">No asisten</div></div>
-      <div class="stat"><div class="n" id="stPendientes">—</div><div class="l">Sin responder</div></div>
+      <div class="stat"><div class="n" id="stRechazadas">—</div><div class="l">Familias que no asisten</div></div>
+      <div class="stat"><div class="n" id="stPersonasRechazadas">—</div><div class="l">Personas que no asisten</div></div>
+      <div class="stat"><div class="n" id="stPendientes">—</div><div class="l">Familias sin responder</div></div>
+      <div class="stat"><div class="n" id="stPersonasPendientes">—</div><div class="l">Personas sin responder</div></div>
     </div>
 
     <table>
@@ -80,6 +87,13 @@
       <h2>Aún no responden</h2>
       <ul id="listaPendientes"></ul>
     </div>
+
+    <h2 class="seccion-title">Auditoría — historial completo</h2>
+    <p class="msg" style="margin-bottom:.8rem">Más reciente primero. Filas resaltadas: el link usado (<code>?i=</code>) no coincide con la familia que confirmó.</p>
+    <table>
+      <thead><tr><th>Familia</th><th>Estado</th><th>Asistentes</th><th>Origen</th><th>Fecha</th></tr></thead>
+      <tbody id="tbodyAudit"></tbody>
+    </table>
   </div>
 </div>
 
@@ -114,17 +128,57 @@ async function cargarResumen(clave){
   return data || [];
 }
 
+async function cargarAuditoria(clave){
+  const supabase = await getSupabaseClient();
+  if (!supabase) throw new Error("Falta configurar Supabase (config.js)");
+  const { data, error } = await supabase.rpc("get_auditoria", { p_clave: clave });
+  if (error) throw error;
+  return data || [];
+}
+
+function familiaDelLink(origen){
+  if (!origen) return null;
+  try { return new URL(origen).searchParams.get("i"); }
+  catch(e){ return null; }
+}
+
+function renderAuditoria(filas){
+  const tbody = document.getElementById("tbodyAudit");
+  tbody.innerHTML = "";
+  const porId = new Map(FAMILIAS.map(f => [f.id, f.nombre]));
+  filas.forEach(f=>{
+    const linkId = familiaDelLink(f.origen);
+    const mismatch = linkId && linkId !== f.familia_id;
+    const tr = document.createElement("tr");
+    if (mismatch) tr.className = "fila-mismatch";
+    tr.innerHTML = `
+      <td>${f.familia}${mismatch ? ` <span class="badge warn">⚠ usó el link de ${porId.get(linkId) || linkId}</span>` : ""}</td>
+      <td><span class="badge ${f.estado}">${f.estado === "confirmado" ? "Confirmó" : "No asiste"}</span></td>
+      <td>${f.estado === "confirmado" ? (f.asistentes||[]).join(", ") : "—"}</td>
+      <td><span class="origen">${f.origen || "—"}</span></td>
+      <td>${f.created_at ? new Date(f.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"}) : "—"}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
 function render(filas){
   const porId = new Map(filas.map(f => [f.familia_id, f]));
+  const porFamiliaId = new Map(FAMILIAS.map(f => [f.id, f]));
   const confirmadas = filas.filter(f => f.estado === "confirmado");
   const rechazadas = filas.filter(f => f.estado === "rechazado");
   const totalPersonas = confirmadas.reduce((s,f)=>s+(f.num_asistentes||0),0);
   const pendientes = FAMILIAS.filter(fam => !porId.has(fam.id));
+  // una fila rechazada no guarda "asistentes" (se rechaza por familia
+  // completa), así que el conteo de personas sale de familias.js
+  const personasRechazadas = rechazadas.reduce((s,f)=>s+(porFamiliaId.get(f.familia_id)?.miembros.length||0),0);
+  const personasPendientes = pendientes.reduce((s,fam)=>s+fam.miembros.length,0);
 
   document.getElementById("stConfirmadas").textContent = confirmadas.length;
   document.getElementById("stPersonas").textContent = totalPersonas;
   document.getElementById("stRechazadas").textContent = rechazadas.length;
+  document.getElementById("stPersonasRechazadas").textContent = personasRechazadas;
   document.getElementById("stPendientes").textContent = pendientes.length;
+  document.getElementById("stPersonasPendientes").textContent = personasPendientes;
 
   const tbody = document.getElementById("tbody");
   tbody.innerHTML = "";
@@ -168,6 +222,7 @@ async function intentarEntrar(){
     gate.style.display = "none";
     panel.style.display = "block";
     render(filas);
+    renderAuditoria(await cargarAuditoria(clave));
   } catch(e){
     console.error(e);
     gateMsg.className = "msg error";
@@ -184,7 +239,10 @@ btnActualizar.onclick = async ()=>{
   const clave = sessionStorage.getItem("rsvpClave");
   if (!clave) return;
   btnActualizar.disabled = true; btnActualizar.textContent = "Actualizando…";
-  try { render(await cargarResumen(clave)); }
+  try {
+    render(await cargarResumen(clave));
+    renderAuditoria(await cargarAuditoria(clave));
+  }
   catch(e){ console.error(e); }
   finally { btnActualizar.disabled = false; btnActualizar.textContent = "Actualizar"; }
 };
