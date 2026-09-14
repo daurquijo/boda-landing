@@ -136,6 +136,7 @@
   .pase-qr{margin:1.1rem auto .4rem;width:150px;height:150px}
   .pase-qr img{width:150px;height:150px;image-rendering:pixelated}
   .pase-code{font-size:.8rem;letter-spacing:.12em;color:var(--ink-soft)}
+  .pase-sobres{font-size:.72rem;color:var(--ink-soft);margin-top:.5rem;font-style:italic}
   .pase-actions{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:1.1rem}
   .pase-actions button,.pase-actions a{padding:.9rem;border-radius:4px;font-family:"Cormorant Garamond",serif;font-size:1.1rem;cursor:pointer;transition:all .2s;text-decoration:none;display:grid;place-items:center}
   .btn-primary{background:var(--olive-deep);color:var(--white);border:none}
@@ -308,6 +309,7 @@
         </div>
 
         <p class="val-note">🎟️ La entrada se valida con el pase que se genera al confirmar. Descárgalo y tenlo a la mano el día del evento.</p>
+        <p class="val-note">💌 Si quieres tener un detalle con nosotros, será lluvia de sobres.</p>
       </div>
 
       <div class="gracias" id="gracias">
@@ -325,6 +327,7 @@
             <div class="pase-loc serif" id="paseLoc">—</div>
             <div class="pase-qr" id="paseQr"></div>
             <div class="pase-code" id="paseCode">—</div>
+            <div class="pase-sobres">💌 Si quieres tener un detalle con nosotros, será lluvia de sobres.</div>
           </div>
           <div class="pase-actions">
             <button class="btn-primary" id="btnImg">Descargar pase</button>
@@ -613,6 +616,8 @@ function descargarPase(payload){
   x.fillStyle="#fff"; x.fillRect(ox-16,oy-16,qsize+32,qsize+32);
   drawQR(x,qrActual,ox,oy,qsize);
   x.fillStyle="#5C6047"; x.font="400 28px Arial, sans-serif"; x.fillText("Código "+payload.codigo,W/2,oy+qsize+55);
+  x.fillStyle="#5C6047"; x.font="italic 26px Georgia, serif";
+  wrapText(x,"💌 Si quieres tener un detalle con nosotros, será lluvia de sobres.",W/2,oy+qsize+100,W-320,32);
   x.fillStyle="#66703F"; x.font="italic 30px Georgia, serif"; x.fillText("Esteban & Tatiana",W/2,H-190);
   x.fillStyle="#5C6047"; x.font="400 24px Arial, sans-serif";
   wrapText(x,"Presenta este pase en la entrada. La entrada se valida con tu pase.",W/2,H-140,W-320,34);
