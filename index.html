@@ -353,6 +353,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="config.js"></script>
 <script type="module">
+import { FAMILIAS } from "./familias.js";
+
 /* ==========================================================================
    CONFIGURACIÓN
    ========================================================================== */
@@ -369,38 +371,7 @@ const UBICACION = {
   wazeUrl: "https://waze.com/ul/hd2g77q7f1",
 };
 
-/* ==========================================================================
-   FAMILIAS INVITADAS (lista real). id = va en el link ?i=<id>
-   ========================================================================== */
-const FAMILIAS = [
-  { id:"benavides-neira",     nombre:"Familia Benavides Neira",     miembros:["Santiago Benavides","Dayana Neira"] },
-  { id:"benavides-cruz",      nombre:"Familia Benavides Cruz",      miembros:["Pedronel Benavides","Cristina Cruz"] },
-  { id:"urquijo-carpintero",  nombre:"Familia Urquijo Carpintero",  miembros:["Tatiana Carpintero","Esteban Urquijo"] },
-  { id:"munoz-martinez",      nombre:"Familia Muñoz Martinez",      miembros:["Lorena Martinez","Andres Muñoz"] },
-  { id:"bernal-melo",         nombre:"Familia Bernal Melo",         miembros:["Esteban Bernal","Daniela Melo"] },
-  { id:"daniel-rincon",       nombre:"Daniel Rincon",               miembros:["Daniel Rincon"] },
-  { id:"urquijo-hernandez",   nombre:"Familia Urquijo Hernandez",   miembros:["Jorge Urquijo","Adriana Hernandez","Valeria Urquijo Hernandez"] },
-  { id:"pinzon-urquijo",      nombre:"Familia Pinzon Urquijo",      miembros:["Karol Urquijo","Andres Pinzon"] },
-  { id:"murillo-urquijo",     nombre:"Familia Murillo Urquijo",     miembros:["Nathalia Urquijo","Oscar Murillo","Salome Cardenas Urquijo"] },
-  { id:"betancourt-urquijo",  nombre:"Familia Betancourt Urquijo",  miembros:["Daniela Urquijo","Santiago Betancourt"] },
-  { id:"urquijo-garzon",      nombre:"Familia Urquijo Garzon",      miembros:["Sthephania Urquijo","Juan Esteban Garzon","Mía Urquijo Garzon"] },
-  { id:"carpintero-mosquera", nombre:"Familia Carpintero Mosquera", miembros:["Antonio Carpintero Mora","Mayiber Mosquera Sanchez","Samuel Carpintero Mosquera","Vanessa"] },
-  { id:"mosquera-martinez",   nombre:"Familia Mosquera Martinez",   miembros:["Jose Mosquera","Nidia Martinez","Michael Mosquera Martinez","Yurani Mosquera Martinez"] },
-  { id:"mojica-carpintero",   nombre:"Familia Mojica Carpintero",   miembros:["Griselda Carpintero","Omar Mojica","Johan Mojica Carpintero","Stiven Mojica Carpintero"] },
-  { id:"lucila-sanchez",      nombre:"Lucila Sanchez",              miembros:["Lucila Sanchez"] },
-  { id:"carpintero-rico",     nombre:"Familia Carpintero Rico",     miembros:["Mildo Carpintero Mora","Elsa Rico","Eliana Carpintero"] },
-  { id:"carpintero-figueroa", nombre:"Familia Carpintero Figueroa", miembros:["Pedro Carpintero Mora","Mari Figueroa"] },
-  { id:"mariela-carpintero",  nombre:"Mariela Carpintero Mora",     miembros:["Mariela Carpintero Mora"] },
-  { id:"castaneda-carpintero",nombre:"Familia Castañeda Carpintero",miembros:["Leonor Carpintero Mora","Luis Castañeda"] },
-  { id:"roa-carpintero",      nombre:"Familia Roa Carpintero",      miembros:["Patricia Carpintero","Andrey Roa"] },
-  { id:"lozano-carpintero",   nombre:"Familia Lozano Carpintero",   miembros:["David Lozano","Yury Carpintero"] },
-  { id:"valeria-betancourt",  nombre:"Valeria Betancourt",          miembros:["Valeria Betancourt"] },
-  { id:"alejandra-bello",     nombre:"Alejandra Bello",             miembros:["Alejandra Bello"] },
-  { id:"paulina-arias",       nombre:"Paulina Arias",               miembros:["Paulina Arias"] },
-  { id:"monica-estrada",      nombre:"Monica Estrada",              miembros:["Monica Estrada"] },
-  { id:"lorena-jaramillo",    nombre:"Lorena Jaramillo",            miembros:["Lorena Jaramillo"] },
-  { id:"silva",               nombre:"Familia Silva",               miembros:["Santiago Silva","Natalia"] },
-];
+/* Lista de familias — ver familias.js (compartido con admin.html) */
 
 /* ==========================================================================
    GUARDAR RESULTADOS — Supabase
@@ -678,13 +649,15 @@ async function guardarRSVP(payload){
   }
   const supabase = await getSupabaseClient();
   if (!supabase) throw new Error("Falta configurar Supabase (config.js con SUPABASE_URL/ANON_KEY)");
-  const { error } = await supabase.from("confirmaciones").insert({
-    familia_id: payload.familia_id,
-    familia: payload.familia,
-    estado: payload.estado,
-    asistentes: payload.asistentes,
-    num_asistentes: payload.num_asistentes,
-    codigo: payload.codigo,
+  // guardar_confirmacion() hace el upsert por familia_id adentro de la
+  // función (SECURITY DEFINER) — no se toca la tabla directo desde acá.
+  const { error } = await supabase.rpc("guardar_confirmacion", {
+    p_familia_id: payload.familia_id,
+    p_familia: payload.familia,
+    p_estado: payload.estado,
+    p_asistentes: payload.asistentes,
+    p_num_asistentes: payload.num_asistentes,
+    p_codigo: payload.codigo,
   });
   if (error) throw error;
   return { ok:true };

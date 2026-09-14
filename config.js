@@ -1,18 +1,11 @@
 /* ==========================================================================
-   Config por defecto — placeholder seguro, SÍ se sube a git.
-   En producción, el workflow de GitHub Actions (.github/workflows/deploy.yml)
-   sobrescribe este archivo con los Secrets del repo (SUPABASE_URL,
-   SUPABASE_ANON_KEY) justo antes de publicar — el valor real nunca llega a
-   un commit. GitHub Pages NO sirve archivos listados en .gitignore aunque
-   el workflow los suba en el artifact, por eso este archivo debe quedar
-   trackeado (ver README.md).
-
-   Para probar localmente con Supabase real: edita las dos líneas de abajo
-   con tus propias llaves (Supabase → Settings → API), prueba, y evita
-   commitear ese cambio (o revalidalo con `git checkout config.js`).
+   Plantilla de configuración local.
+   1) Copia este archivo como "config.js" (mismo folder).
+   2) Rellena tus datos de Supabase.
+   3) config.js NO se sube a git (ver .gitignore) — cada quien pone las suyas.
    ========================================================================== */
 window.SUPABASE_CONFIG = {
-  DEMO_MODE: true,               
-  SUPABASE_URL: "",              // https://XXXXXXXX.supabase.co
-  SUPABASE_ANON_KEY: "",         // anon public key
+  DEMO_MODE: false,               // pon false cuando llenes las llaves de abajo
+  SUPABASE_URL: "https://mxanppnyatthybuigckf.supabase.co",              // https://XXXXXXXX.supabase.co
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14YW5wcG55YXR0aHlidWlnY2tmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTg5NzMsImV4cCI6MjEwNDg5NDk3M30.gpiufXxQSlX6a7EMd3i6IAlJaP48iCRTaq3irDXHGls",         // anon public key
 };

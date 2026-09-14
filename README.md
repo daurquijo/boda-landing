@@ -5,11 +5,9 @@ archivo estático (`index.html`), sin build tools.
 
 ## Correr el proyecto
 
-```bash
-open index.html
-```
-
-o con un servidor local (recomendado):
+Necesita un servidor local — `index.html` usa `import` de ES modules
+(`familias.js`), y los navegadores bloquean esa carga si abres el archivo
+directo con doble clic (`file://`).
 
 ```bash
 python3 -m http.server 8000

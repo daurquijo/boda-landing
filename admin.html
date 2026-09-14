@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Confirmaciones — Esteban &amp; Tatiana</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&family=Mulish:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --white:#FCFCF8;--white-deep:#F1F0E6;
+    --olive-deep:#3C4527;--olive:#66703F;
+    --sand:#C7B89C;--sand-soft:#E4DBC8;
+    --ink:#2E3222;--ink-soft:#5C6047;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--white);color:var(--ink);font-family:"Mulish",system-ui,sans-serif;line-height:1.5;padding:2rem 1rem}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:2rem;color:var(--olive-deep);margin-bottom:1.6rem}
+  .gate{max-width:360px;margin:3rem auto;text-align:center}
+  .gate p{color:var(--ink-soft);margin-bottom:1rem;font-size:.9rem}
+  input[type="password"]{width:100%;padding:.8rem;border:1px solid rgba(46,50,34,.25);border-radius:6px;font-size:1rem;margin-bottom:.8rem}
+  button{padding:.8rem 1.4rem;border:none;border-radius:6px;background:var(--olive-deep);color:var(--white);font-family:"Cormorant Garamond",serif;font-size:1.1rem;cursor:pointer}
+  button:hover{background:var(--olive)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .msg{margin-top:.9rem;font-size:.85rem;color:var(--ink-soft)}
+  .msg.error{color:#a33}
+
+  #panel{display:none}
+  .stats{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+  .stat{flex:1;min-width:130px;background:var(--sand-soft);border-radius:10px;padding:1rem;text-align:center}
+  .stat .n{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:2rem;color:var(--olive-deep)}
+  .stat .l{font-size:.76rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em}
+
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:2rem}
+  th,td{text-align:left;padding:.55rem .6rem;border-bottom:1px solid rgba(46,50,34,.12)}
+  th{color:var(--ink-soft);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+  tr.rechazado td:first-child{color:var(--ink-soft)}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.74rem}
+  .badge.confirmado{background:#e3ead6;color:var(--olive-deep)}
+  .badge.rechazado{background:#f1e3e3;color:#a33}
+
+  .pendientes{background:var(--sand-soft);border-radius:10px;padding:1rem 1.2rem}
+  .pendientes h2{font-family:"Cormorant Garamond",serif;font-size:1.2rem;color:var(--olive-deep);margin-bottom:.6rem}
+  .pendientes ul{padding-left:1.1rem;color:var(--ink-soft);font-size:.9rem}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;gap:1rem;flex-wrap:wrap}
+  .toolbar button{font-size:.95rem;padding:.55rem 1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Confirmaciones · Esteban &amp; Tatiana</h1>
+
+  <div class="gate" id="gate">
+    <p>Vista privada — ingresa la clave para ver el resumen.</p>
+    <input type="password" id="clave" placeholder="Clave" autocomplete="off" />
+    <button id="btnEntrar">Ver confirmaciones</button>
+    <p class="msg" id="gateMsg"></p>
+  </div>
+
+  <div id="panel">
+    <div class="toolbar">
+      <span></span>
+      <button id="btnActualizar">Actualizar</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="stConfirmadas">—</div><div class="l">Familias confirmadas</div></div>
+      <div class="stat"><div class="n" id="stPersonas">—</div><div class="l">Personas confirmadas</div></div>
+      <div class="stat"><div class="n" id="stRechazadas">—</div><div class="l">No asisten</div></div>
+      <div class="stat"><div class="n" id="stPendientes">—</div><div class="l">Sin responder</div></div>
+    </div>
+
+    <table>
+      <thead><tr><th>Familia</th><th>Estado</th><th>Asistentes</th><th>Fecha</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <div class="pendientes">
+      <h2>Aún no responden</h2>
+      <ul id="listaPendientes"></ul>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script type="module">
+import { FAMILIAS } from "./familias.js";
+
+const { DEMO_MODE = false, SUPABASE_URL = "", SUPABASE_ANON_KEY = "" } = window.SUPABASE_CONFIG || {};
+
+const gate = document.getElementById("gate");
+const gateMsg = document.getElementById("gateMsg");
+const panel = document.getElementById("panel");
+const claveInput = document.getElementById("clave");
+const btnEntrar = document.getElementById("btnEntrar");
+const btnActualizar = document.getElementById("btnActualizar");
+
+let supabasePromise = null;
+function getSupabaseClient(){
+  if (DEMO_MODE || !SUPABASE_URL) return null;
+  if (!supabasePromise){
+    supabasePromise = import("https://esm.sh/@supabase/supabase-js@2")
+      .then(({ createClient }) => createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+  }
+  return supabasePromise;
+}
+
+async function cargarResumen(clave){
+  const supabase = await getSupabaseClient();
+  if (!supabase) throw new Error("Falta configurar Supabase (config.js)");
+  const { data, error } = await supabase.rpc("get_resumen_confirmaciones", { p_clave: clave });
+  if (error) throw error;
+  return data || [];
+}
+
+function render(filas){
+  const porId = new Map(filas.map(f => [f.familia_id, f]));
+  const confirmadas = filas.filter(f => f.estado === "confirmado");
+  const rechazadas = filas.filter(f => f.estado === "rechazado");
+  const totalPersonas = confirmadas.reduce((s,f)=>s+(f.num_asistentes||0),0);
+  const pendientes = FAMILIAS.filter(fam => !porId.has(fam.id));
+
+  document.getElementById("stConfirmadas").textContent = confirmadas.length;
+  document.getElementById("stPersonas").textContent = totalPersonas;
+  document.getElementById("stRechazadas").textContent = rechazadas.length;
+  document.getElementById("stPendientes").textContent = pendientes.length;
+
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+  [...filas].sort((a,b)=>a.familia.localeCompare(b.familia,"es")).forEach(f=>{
+    const tr = document.createElement("tr");
+    tr.className = f.estado;
+    tr.innerHTML = `
+      <td>${f.familia}</td>
+      <td><span class="badge ${f.estado}">${f.estado === "confirmado" ? "Confirmó" : "No asiste"}</span></td>
+      <td>${f.estado === "confirmado" ? (f.asistentes||[]).join(", ") : "—"}</td>
+      <td>${f.created_at ? new Date(f.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"}) : "—"}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const ul = document.getElementById("listaPendientes");
+  ul.innerHTML = "";
+  if (pendientes.length === 0){
+    ul.innerHTML = "<li>¡Todas respondieron!</li>";
+  } else {
+    [...pendientes].sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).forEach(fam=>{
+      const li = document.createElement("li");
+      li.textContent = fam.nombre;
+      ul.appendChild(li);
+    });
+  }
+}
+
+async function intentarEntrar(){
+  const clave = claveInput.value;
+  if (!clave){ gateMsg.textContent = "Escribe la clave."; return; }
+  btnEntrar.disabled = true; btnEntrar.textContent = "Verificando…";
+  gateMsg.className = "msg"; gateMsg.textContent = "";
+  try {
+    const filas = await cargarResumen(clave);
+    if (filas.length === 0){
+      gateMsg.className = "msg error";
+      gateMsg.textContent = "Clave incorrecta, o aún no hay confirmaciones.";
+      return;
+    }
+    sessionStorage.setItem("rsvpClave", clave);
+    gate.style.display = "none";
+    panel.style.display = "block";
+    render(filas);
+  } catch(e){
+    console.error(e);
+    gateMsg.className = "msg error";
+    gateMsg.textContent = "No se pudo conectar. Revisa tu conexión.";
+  } finally {
+    btnEntrar.disabled = false; btnEntrar.textContent = "Ver confirmaciones";
+  }
+}
+
+btnEntrar.onclick = intentarEntrar;
+claveInput.addEventListener("keydown", e => { if (e.key === "Enter") intentarEntrar(); });
+
+btnActualizar.onclick = async ()=>{
+  const clave = sessionStorage.getItem("rsvpClave");
+  if (!clave) return;
+  btnActualizar.disabled = true; btnActualizar.textContent = "Actualizando…";
+  try { render(await cargarResumen(clave)); }
+  catch(e){ console.error(e); }
+  finally { btnActualizar.disabled = false; btnActualizar.textContent = "Actualizar"; }
+};
+
+// si ya se validó la clave en esta pestaña, no pedirla de nuevo
+const claveGuardada = sessionStorage.getItem("rsvpClave");
+if (claveGuardada){
+  claveInput.value = claveGuardada;
+  intentarEntrar();
+}
+</script>
+</body>
+</html>
