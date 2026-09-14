@@ -30,4 +30,5 @@ export const FAMILIAS = [
   { id:"monica-estrada",      nombre:"Monica Estrada",              miembros:["Monica Estrada"] },
   { id:"lorena-jaramillo",    nombre:"Lorena Jaramillo",            miembros:["Lorena Jaramillo"] },
   { id:"silva",               nombre:"Familia Silva",               miembros:["Santiago Silva","Natalia"] },
+  { id: "Leon Moon",          nombre: "Leon Moon",                  miembros: ["Leon Moon"] },
 ];
