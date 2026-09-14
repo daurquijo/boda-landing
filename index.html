@@ -390,6 +390,7 @@ const {
   SUPABASE_URL = "",
   SUPABASE_ANON_KEY = "",
 } = window.SUPABASE_CONFIG || {};
+let supabasePromise = null;
 
 /* ==========================================================================
    Poblar el selector de familias
@@ -440,6 +441,7 @@ if (linkId && FAMILIAS.some(f=>f.id===linkId)){
 let familiaActual = null;
 const miembrosWrap = document.getElementById("miembrosWrap");
 const miembrosBox = document.getElementById("miembros");
+const hint = document.getElementById("hint");
 
 function renderMiembros(fam){
   familiaActual = fam;
@@ -470,7 +472,6 @@ if (selFamilia.value){
    ========================================================================== */
 const submitBtn = document.getElementById("submitBtn");
 const declineBtn = document.getElementById("declineBtn");
-const hint = document.getElementById("hint");
 
 submitBtn.onclick = async ()=>{
   if (!familiaActual){ hint.textContent = "Primero selecciona tu familia."; return; }
@@ -625,7 +626,6 @@ function descargarPase(payload){
 /* ==========================================================================
    Supabase — cliente compartido (lazy, se crea una sola vez)
    ========================================================================== */
-let supabasePromise = null;
 function getSupabaseClient(){
   if (DEMO_MODE || !SUPABASE_URL) return null;
   if (!supabasePromise){
