@@ -116,6 +116,9 @@
   .rsvp-closed{text-align:center;margin:0 0 1.6rem;padding:1.2rem;border:1px solid rgba(102,112,63,.25);border-radius:10px;background:var(--sand-soft);color:var(--ink-soft);font-size:.95rem}
   .val-note{font-size:.78rem;color:var(--ink-soft);margin-top:1.4rem;line-height:1.5;text-align:center}
   .hint{font-size:.78rem;color:var(--ink-soft);margin-top:.8rem;text-align:center}
+  .rsvp-checking{display:none;align-items:center;justify-content:center;gap:.6rem;padding:1.4rem 0;color:var(--ink-soft);font-size:.88rem}
+  .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(102,112,63,.25);border-top-color:var(--olive-deep);animation:spin .7s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
 
   /* pase */
   .gracias{display:none;text-align:center;padding:1rem 0}
@@ -300,6 +303,8 @@
           <option value="">— Elige de la lista —</option>
         </select>
 
+        <div class="rsvp-checking" id="rsvpChecking"><span class="spinner"></span> Verificando si ya confirmaste…</div>
+
         <div id="miembrosWrap" style="display:none">
           <p class="miembros-title">¿Quiénes nos acompañan?</p>
           <div id="miembros"></div>
@@ -445,6 +450,7 @@ let familiaActual = null;
 const miembrosWrap = document.getElementById("miembrosWrap");
 const miembrosBox = document.getElementById("miembros");
 const hint = document.getElementById("hint");
+const rsvpChecking = document.getElementById("rsvpChecking");
 
 function renderMiembros(fam){
   familiaActual = fam;
@@ -457,17 +463,45 @@ function renderMiembros(fam){
     miembrosBox.appendChild(row);
   });
   miembrosWrap.style.display = "block";
-  document.getElementById("hint").textContent = "";
+  hint.textContent = "";
 }
+
+async function seleccionarFamilia(fam){
+  familiaActual = fam;
+  miembrosWrap.style.display = "none";
+  selFamilia.disabled = true;
+  rsvpChecking.style.display = "flex";
+  const prev = await buscarConfirmacion(fam.id);
+  rsvpChecking.style.display = "none";
+  selFamilia.disabled = false;
+  // otra familia pudo elegirse mientras se verificaba; no pisar esa selección
+  if (selFamilia.value !== fam.id) return;
+  if (prev && prev.estado === "rechazado"){
+    mostrarRechazo({ familia_id: fam.id, familia: fam.nombre });
+    return;
+  }
+  if (prev && prev.estado === "confirmado"){
+    mostrarPase({
+      familia_id: fam.id,
+      familia: fam.nombre,
+      estado: prev.estado,
+      asistentes: prev.asistentes || [],
+      num_asistentes: prev.num_asistentes || 0,
+      codigo: prev.codigo || codigoPase(fam.id),
+    });
+    return;
+  }
+  renderMiembros(fam);
+}
+
 selFamilia.addEventListener("change", ()=>{
   const fam = FAMILIAS.find(f=>f.id===selFamilia.value);
-  if (fam){ renderMiembros(fam); revisarConfirmacionPrevia(fam); }
-  else { miembrosWrap.style.display="none"; familiaActual=null; }
+  if (fam){ seleccionarFamilia(fam); }
+  else { miembrosWrap.style.display="none"; rsvpChecking.style.display="none"; familiaActual=null; }
 });
 if (selFamilia.value){
   const fam = FAMILIAS.find(f=>f.id===selFamilia.value);
-  renderMiembros(fam);
-  revisarConfirmacionPrevia(fam);
+  seleccionarFamilia(fam);
 }
 
 /* ==========================================================================
@@ -557,6 +591,7 @@ function mostrarPase(payload){
   document.getElementById("btnCal").onclick = ()=>descargarICS(payload.familia);
   document.getElementById("btnImg").onclick = ()=>descargarPase(payload);
   document.getElementById("pase").style.display = "block";
+  document.getElementById("editarBtn").style.display = "block";
 }
 
 function mostrarRechazo(payload){
@@ -566,6 +601,8 @@ function mostrarRechazo(payload){
   document.getElementById("checkIco").textContent = "♡";
   document.getElementById("graciasTitulo").textContent = "Los vamos a extrañar";
   document.getElementById("graciasTexto").textContent = "Gracias por avisarnos. Nos hubiera encantado tenerlos, ¡seguro nos veremos pronto!";
+  // ya no se permite cambiar la respuesta una vez rechazada
+  document.getElementById("editarBtn").style.display = "none";
 }
 
 /* ==========================================================================
@@ -648,10 +685,26 @@ function getSupabaseClient(){
    en silencio, que es justo el bug que dejó caer las confirmaciones cuando
    config.js faltaba en producción.
    ========================================================================== */
+/* Persistencia local solo para probar el flujo con DEMO_MODE=true (sin
+   Supabase configurado): guarda/lee del localStorage del navegador. */
+const DEMO_KEY = "et_rsvp_demo";
+function demoGuardar(payload){
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem(DEMO_KEY)) || {}; } catch(e){}
+  store[payload.familia_id] = payload;
+  localStorage.setItem(DEMO_KEY, JSON.stringify(store));
+}
+function demoLeer(familiaId){
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem(DEMO_KEY)) || {}; } catch(e){}
+  return store[familiaId] || null;
+}
+
 async function guardarRSVP(payload){
   if (DEMO_MODE){
     console.log("[DEMO] RSVP:", payload);
     await new Promise(r=>setTimeout(r,600));
+    demoGuardar(payload);
     return { ok:true };
   }
   const supabase = await getSupabaseClient();
@@ -677,6 +730,10 @@ async function guardarRSVP(payload){
    Supabase configurado, se ignora en silencio y se muestra el formulario.
    ========================================================================== */
 async function buscarConfirmacion(familiaId){
+  if (DEMO_MODE){
+    await new Promise(r=>setTimeout(r,500));
+    return demoLeer(familiaId);
+  }
   const supabase = await getSupabaseClient();
   if (!supabase) return null;
   try {
@@ -687,24 +744,6 @@ async function buscarConfirmacion(familiaId){
     console.error(e);
     return null;
   }
-}
-
-async function revisarConfirmacionPrevia(fam){
-  if (!fam) return;
-  hint.textContent = "Verificando si ya confirmaste…";
-  const prev = await buscarConfirmacion(fam.id);
-  if (hint.textContent === "Verificando si ya confirmaste…") hint.textContent = "";
-  if (!prev) return;
-  const payload = {
-    familia_id: fam.id,
-    familia: fam.nombre,
-    estado: prev.estado,
-    asistentes: prev.asistentes || [],
-    num_asistentes: prev.num_asistentes || 0,
-    codigo: prev.codigo || codigoPase(fam.id),
-  };
-  if (payload.estado === "confirmado") mostrarPase(payload);
-  else mostrarRechazo(payload);
 }
 
 /* ==========================================================================
